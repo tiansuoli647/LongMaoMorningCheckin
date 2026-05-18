@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Totoro WeChat Login</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="container">
+        <div id="login-card" class="card">
+            <h1>龙猫早操打卡</h1>
+            <p>请使用微信扫码登录</p>
+            <div id="qr-container">
+                <div id="loading" class="spinner"></div>
+                <img id="qrcode" src="" alt="WeChat QR Code" style="display: none;">
+                <div id="status-overlay" class="overlay" style="display: none;">
+                    <div id="status-text">已过期，请刷新</div>
+                    <button id="refresh-btn">刷新二维码</button>
+                </div>
+            </div>
+            <div id="message" class="message">正在获取二维码...</div>
+        </div>
+
+        <div id="profile-card" class="card" style="display: none;">
+            <h1>登录成功</h1>
+            <div class="user-info">
+                <img id="user-avatar" src="" alt="Avatar">
+                <h2 id="user-name">加载中...</h2>
+                <p id="user-school"></p>
+                <p id="user-student-id"></p>
+            </div>
+
+            <div id="checkin-section" class="checkin-section">
+                <h3>今日早操打卡</h3>
+                <div id="task-info" class="task-info">
+                    <div class="task-stat">
+                        <span class="label">需打卡</span>
+                        <span id="need-count" class="value">-</span>
+                    </div>
+                    <div class="task-stat">
+                        <span class="label">已完成</span>
+                        <span id="comp-count" class="value">-</span>
+                    </div>
+                    <div class="task-stat">
+                        <span class="label">时间段</span>
+                        <span id="task-time" class="value">-</span>
+                    </div>
+                </div>
+                
+                <div id="point-list" class="point-list">
+                    <!-- Points will be loaded here -->
+                </div>
+            </div>
+
+            <button id="logout-btn">退出登录</button>
+        </div>
+    </div>
+    <script src="js/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,1754 @@
+龙猫API手册
+⚠️
+声明：
+本手册仅用于学习和研究，使用时请务必遵守相关法规和所在单位的制度，且不得用于任何商业用途。
+概述
+Base URL: https://app.xtotoro.com
+Content-Type: application/json
+Charset: UTF-8
+HTTP 方法: 全部使用 POST
+User-Agent: 全部使用okhttp/4.9.0
+数据格式: JSON
+加密机制
+RSA 加密
+所有请求体在发送前都经过 RSA 加密（特定端点除外）：
+配置项
+值
+算法
+RSA
+填充模式
+RSA/ECB/PKCS1Padding
+密钥来源
+assets/rsa_public_key.pem
+密钥长度
+1024 位
+分段大小
+117 字节
+输出编码
+Base64
+RSA 公钥:
+-----BEGIN PUBLIC KEY-----
+MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQDU/j+c5FdkEwhSIF9jmw+050iN
+0/yfjhk/669RyFiG5wu0Adpk3NR2Ikbo2lA+rTBJBx1bpGVGCvMKKQ/pljNUSmJt
+JaM5ieONFrZD6RhSUbjrNENH89Ks9GGWi+1dkOfdSHNujQilF5oLOIHez1HYmwml
+ADA29Ux4yb8e4+PtLQIDAQAB
+-----END PUBLIC KEY-----
+YAML
+RSA私钥（已脱敏）：
+[REDACTED_RSA_PRIVATE_KEY]
+YAML
+加密流程:
+1. 将请求 JSON 字符串转为字节数组（UTF-8 编码）
+2. 从 assets/rsa_public_key.pem 加载 RSA 公钥
+- 读取 PEM 文件，去除 -----BEGIN PUBLIC KEY----- 和 -----END PUBLIC KEY----- 标记
+- 将 Base64 编码的公钥解码
+- 使用 X509EncodedKeySpec 和 KeyFactory 生成 RSAPublicKey 对象
+3. 初始化 Cipher 对象：Cipher.getInstance("RSA/ECB/PKCS1Padding")
+4. 使用公钥初始化加密模式：cipher.init(Cipher.ENCRYPT_MODE, publicKey)
+5. 分段加密（每段最大 117 字节）
+- 对于每个数据段，调用 cipher.doFinal(bytes, offset, length)
+- 将加密结果写入 ByteArrayOutputStream
+6. 对完整的加密字节数组进行 Base64 编码（使用 android.util.Base64.encodeToString()）
+7. 将 Base64 字符串作为请求体发送（Content-Type: application/json）
+例外: sunRunExercisesDetail 端点不加密请求体，直接发送 JSON
+代码位置
+拦截器: CommonInterceptor.java
+RSA工具类: sources/g/o/c/h/l.java (密钥加载)
+RSA加密: sources/g/o/c/h/q.java (加密实现)
+通用响应结构
+{
+    "code": "string",    // 响应码，如 "0" 表示成功
+    "message": "string", // 响应消息
+    // ... 其他业务字段
+}
+JSON
+字段数据格式详细说明
+通用字段格式规范
+所有 API 字段均以 字符串 形式传输，即使是数值类型。
+字段类型
+格式说明
+示例值
+ID类字段
+纯数字字符串
+"12345", "1001"
+日期
+yyyy-MM-dd
+"2025-12-15"
+时间
+HH:mm:ss 或 HH:mm
+"08:30:00", "18:00"
+经纬度
+小数点后6位精度
+"116.397428", "39.908823"
+布尔标志
+"0" 或 "1"
+"1" (是), "0" (否)
+浮点数
+字符串形式
+"3.50", "5.25"
+UUID
+标准 UUID 格式
+"550e8400-e29b-41d4-a716-446655440000"
+详细字段说明与示例
+1. 用户信息字段
+字段名
+数据类型
+格式说明
+示例值
+studentId
+string
+学生唯一标识，纯数字
+"100234"
+stuNumber
+string
+学号，学校编号规则
+"2021123456"
+stuName
+string
+学生姓名
+"张三"
+phoneNumber
+string
+11位手机号
+"13812345678"
+schoolId
+string
+学校ID，纯数字
+"1001"
+schoolName
+string
+学校全称
+"XX大学"
+campusId
+string
+校区ID
+"2001"
+campusName
+string
+校区名称
+"本部校区"
+collegeId
+string
+学院ID
+"301"
+collegeName
+string
+学院名称
+"计算机学院"
+naturalId
+string
+专业ID
+"40101"
+naturalName
+string
+专业名称
+"计算机科学与技术"
+className
+string
+班级
+"计科2101班"
+gender
+string
+性别: "1"=男, "2"=女
+"1"
+headPortrait
+string
+头像URL，HTTP(S)地址
+"https://app.xtotoro.com/avatar/xxx.jpg"
+token
+string
+JWT格式或自定义令牌
+"eyJhbGciOiJIUzI1NiIs..."
+示例响应:
+{
+    "code": "0",
+    "message": "登录成功",
+    "studentId": "100234",
+    "stuNumber": "2021123456",
+    "stuName": "张三",
+    "phoneNumber": "13812345678",
+    "schoolId": "1001",
+    "schoolName": "XX大学",
+    "campusId": "2001",
+    "campusName": "本部校区",
+    "collegeId": "301",
+    "collegeName": "计算机学院",
+    "naturalId": "40101",
+    "naturalName": "计算机科学与技术",
+    "className": "计科2101班",
+    "gender": "1",
+    "headPortrait": "https://app.xtotoro.com/avatar/100234.jpg",
+    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+}
+JSON
+2. 时间相关字段
+字段名
+数据类型
+格式
+示例值
+说明
+startDate
+string
+yyyy-MM-dd
+"2025-12-01"
+任务开始日期
+endDate
+string
+yyyy-MM-dd
+"2025-12-31"
+任务结束日期
+startTime
+string
+HH:mm:ss
+"06:00:00"
+每日开始时间
+endTime
+string
+HH:mm:ss
+"22:00:00"
+每日结束时间
+submitDate
+string
+yyyy-MM-dd
+"2025-12-15"
+记录提交日期
+evaluateDate
+string
+yyyy-MM-dd
+"2025-12-15"
+评估/考核日期
+usedTime
+string
+秒数
+"1800"
+跑步用时（30分钟=1800秒）
+时间格式代码参考:
+// 日期格式
+SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
+// 时间格式
+SimpleDateFormat timeFormat = new SimpleDateFormat("HH:mm:ss");
+// 完整时间戳
+SimpleDateFormat fullFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+Java
+3. 位置坐标字段
+字段名
+数据类型
+格式
+示例值
+说明
+longitude
+string
+小数，6位精度
+"116.397428"
+经度（东经为正）
+latitude
+string
+小数，6位精度
+"39.908823"
+纬度（北纬为正）
+offsetRange
+string
+整数（米）
+"50"
+允许偏移范围
+坐标系: 使用 GCJ-02 坐标系（高德地图坐标系）
+轨迹点示例:
+{
+    "pointList": [
+        {"longitude": "116.397428", "latitude": "39.908823"},
+        {"longitude": "116.397512", "latitude": "39.908956"},
+        {"longitude": "116.397634", "latitude": "39.909102"},
+        {"longitude": "116.397756", "latitude": "39.909248"}
+    ]
+}
+JSON
+4. 跑步任务相关字段
+字段名
+数据类型
+格式
+示例值
+说明
+taskId
+string
+数字
+"10001"
+任务唯一标识
+routeId
+string
+数字
+"5001"
+路线ID
+pointId
+string
+数字
+"2001"
+打卡点ID
+pointName
+string
+文本
+"图书馆"
+打卡点名称
+mileage
+string
+公里数
+"3.00"
+要求里程（公里）
+km
+string
+公里数
+"3.25"
+实际里程（公里）
+minTime
+string
+分钟数
+"15"
+最短用时（分钟）
+maxTime
+string
+分钟数
+"45"
+最长用时（分钟）
+minSpeed
+string
+配速
+"4.00"
+最低配速（分钟/公里）
+maxSpeed
+string
+配速
+"10.00"
+最高配速（分钟/公里）
+avgSpeed
+string
+配速
+"5.30"
+平均配速（分钟/公里）
+fitDegree
+string
+百分比
+"85"
+路线匹配度要求
+steps
+string
+整数
+"4500"
+步数
+runType
+string
+枚举
+"1"
+跑步类型: "1"=阳光跑, "2"=自由跑
+faceFlag
+string
+布尔
+"1"
+是否需要人脸: "1"=是, "0"=否
+ifHasRun
+string
+布尔
+"0"
+今日是否已跑: "0"=否, "1"=是
+跑步任务响应示例:
+{
+    "code": "0",
+    "message": "获取成功",
+    "startDate": "2025-12-01",
+    "startTime": "06:00:00",
+    "endDate": "2025-12-31",
+    "endTime": "22:00:00",
+    "mileage": "3.00",
+    "minTime": "15",
+    "maxTime": "45",
+    "minSpeed": "4.00",
+    "maxSpeed": "10.00",
+    "fitDegree": "80",
+    "faceFlag": "1",
+    "offsetRange": "50",
+    "ifHasRun": "0",
+    "runPointList": [
+        {
+            "taskId": "10001",
+            "pointId": "2001",
+            "pointName": "图书馆",
+            "longitude": "116.397428",
+            "latitude": "39.908823",
+            "pointList": [
+                {"longitude": "116.397428", "latitude": "39.908823"},
+                {"longitude": "116.397500", "latitude": "39.908900"}
+            ]
+        },
+        {
+            "taskId": "10001",
+            "pointId": "2002",
+            "pointName": "体育馆",
+            "longitude": "116.398234",
+            "latitude": "39.909456",
+            "pointList": [
+                {"longitude": "116.398234", "latitude": "39.909456"},
+                {"longitude": "116.398300", "latitude": "39.909500"}
+            ]
+        }
+    ]
+}
+JSON
+5. 提交记录字段
+字段名
+数据类型
+格式
+示例值
+说明
+uuid
+string
+UUID格式
+"550e8400-e29b-41d4-a716-446655440000"
+客户端生成的唯一标识
+scantronId
+string
+数字
+"789456"
+服务器返回的记录ID
+consume
+string
+卡路里
+"220"
+消耗热量（千卡）
+flag
+string
+枚举
+"1"
+记录标志
+warnFlag
+string
+布尔
+"0"
+警告标志: "0"=无, "1"=有
+warnType
+string
+枚举
+"0"
+警告类型代码
+ifLocalSubmit
+string
+布尔
+"0"
+是否本地补交: "0"=实时, "1"=补交
+LocalSubmitReason
+string
+文本
+"网络异常"
+本地补交原因
+faceData
+string
+Base64
+"/9j/4AAQSkZJRg..."
+人脸图片Base64编码
+完整提交请求示例:
+{
+    "uuid": "550e8400-e29b-41d4-a716-446655440000",
+    "submitDate": "2025-12-15",
+    "consume": "220",
+    "stuNumber": "2021123456",
+    "schoolId": "1001",
+    "phoneNumber": "13812345678",
+    "headImage": "https://app.xtotoro.com/avatar/100234.jpg",
+    "baseStation": "460-00-12345-6789",
+    "mac": "02:00:00:00:00:00",
+    "taskId": "10001",
+    "routeId": "5001",
+    "flag": "1",
+    "fitDegree": "92",
+    "startTime": "07:30:25",
+    "endTime": "08:02:18",
+    "usedTime": "1913",
+    "km": "3.25",
+    "avgSpeed": "5.53",
+    "steps": "4580",
+    "warnFlag": "0",
+    "warnType": "0",
+    "phoneInfo": "HUAWEI-P40|Android 12|EMUI 12.0",
+    "version": "1.2.14",
+    "sensorString": "acc:0.12,0.34,9.81|gyro:0.01,0.02,0.03",
+    "runType": "1",
+    "pointList": [
+        {"longitude": "116.397428", "latitude": "39.908823"},
+        {"longitude": "116.397512", "latitude": "39.908956"},
+        {"longitude": "116.397634", "latitude": "39.909102"}
+    ],
+    "token": "eyJhbGciOiJIUzI1NiIs...",
+    "evaluateDate": "2025-12-15",
+    "ifLocalSubmit": "0",
+    "LocalSubmitReason": ""
+}
+JSON
+6. 设备信息字段
+字段名
+数据类型
+格式
+示例值
+说明
+baseStation
+string
+MCC-MNC-LAC-CID
+"460-00-12345-6789"
+基站信息
+mac
+string
+MAC地址格式
+"02:00:00:00:00:00"
+设备MAC地址
+phoneInfo
+string
+设备信息组合
+"HUAWEI-P40|Android 12|EMUI 12.0"
+手机型号|系统版本
+version
+string
+版本号
+"1.2.14"
+APP版本号
+appVersion
+string
+版本号
+"1.2.14"
+APP版本号（签到用）
+sensorString
+string
+传感器数据
+"acc:x,y,z|gyro:x,y,z"
+加速度/陀螺仪数据
+baseStation 格式详解:
+MCC-MNC-LAC-CID
+│    │    │    └── Cell ID (基站小区ID)
+│    │    └─────── Location Area Code (位置区域码)
+│    └──────────── Mobile Network Code (移动网络码)
+└───────────────── Mobile Country Code (移动国家码: 460=中国)
+Plain text
+phoneInfo 格式详解:
+{品牌}-{型号}|Android {版本号}|{ROM版本}
+Plain text
+sensorString 格式详解 (传感器数据，用于防作弊):
+acc:{x},{y},{z}|gyro:{x},{y},{z}|...
+│                │
+│                └── 陀螺仪三轴数据
+└───────────────────── 加速度计三轴数据
+Plain text
+7. 早操签到字段
+字段名
+数据类型
+格式
+示例值
+说明
+dayNeedSignCount
+string
+整数
+"1"
+当日需签到次数
+dayCompSignCount
+string
+整数
+"0"
+当日已签到次数
+minTimeInterval
+string
+分钟
+"30"
+最小签到间隔
+qrCode
+string
+二维码内容
+"TOTORO_SIGN_2001_20251215"
+签到二维码数据
+signType
+string
+枚举
+"1"
+签到类型: "1"=位置签到, "2"=扫码签到
+签到请求示例:
+{
+    "stuNumber": "2021123456",
+    "phoneNumber": "13812345678",
+    "qrCode": "TOTORO_SIGN_2001_20251215",
+    "headImage": "/9j/4AAQSkZJRg...",
+    "baseStation": "460-00-12345-6789",
+    "longitude": "116.397428",
+    "latitude": "39.908823",
+    "phoneInfo": "HUAWEI-P40|Android 12|EMUI 12.0",
+    "mac": "02:00:00:00:00:00",
+    "taskId": "3001",
+    "pointId": "2001",
+    "appVersion": "1.2.14",
+    "signType": "1",
+    "token": "eyJhbGciOiJIUzI1NiIs..."
+}
+JSON
+8. 响应码说明
+code值
+含义
+说明
+"0"
+成功
+请求处理成功
+"1"
+失败
+一般性错误
+"401"
+未授权
+token无效或过期
+"403"
+禁止
+无权限访问
+"500"
+服务器错误
+服务器内部错误
+图片上传与处理流程
+1. 人脸识别图片处理
+使用场景:
+- 阳光跑提交详情（sunRunExercisesDetail 接口的 faceData 字段）
+- 早操签到（morningExercises 接口的 headImage 字段，当需要人脸识别时）
+图片获取流程:
+用户操作 → 启动FaceLivenessExpActivity → 百度人脸SDK活体检测 → 返回人脸图片路径 → Base64编码 → 提交
+Plain text
+详细步骤:
+步骤1: 触发人脸识别
+当任务要求人脸识别时（faceFlag="1"），APP调用：
+startActivityForResult(
+    new Intent(context, FaceLivenessExpActivity.class),
+    REQUEST_CODE
+);
+Java
+步骤2: 百度人脸SDK配置
+在 FaceLivenessExpActivity 中配置人脸检测参数：
+FaceConfig config = new FaceConfig();
+
+// 活体检测动作配置
+config.setLivenessTypeList(Arrays.asList(
+    LivenessTypeEnum.Eye,      // 眨眼检测
+    LivenessTypeEnum.Mouth,    // 张嘴检测
+    LivenessTypeEnum.HeadRight // 右转头检测
+));
+
+// 其他配置
+config.setLivenessRandom(true);    // 随机动作顺序
+config.setSound(true);              // 语音提示
+config.setScale(1.0f);              // 图片缩放比例
+config.setCropHeight(640);          // 裁剪高度
+config.setCropWidth(480);           // 裁剪宽度
+config.setEnlargeRatio(1.5f);       // 放大比例
+config.setTimeDetectModule(45000L); // 检测超时(45秒)
+Java
+步骤3: 活体检测结果回调
+@Override
+protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+    if (requestCode == FACE_REQUEST_CODE) {
+        if (resultCode == RESULT_OK) {
+            // 检测成功，获取人脸图片路径
+            String imagePath = data.getStringExtra("imagePath");
+            boolean isSuccess = data.getBooleanExtra("isSuccess", false);
+
+            if (isSuccess && imagePath != null) {
+                // 转换为Base64
+                String faceBase64 = Base64ImageUtil.imageToBase64(imagePath);
+                // 继续提交流程
+                submitWithFaceData(faceBase64);
+            }
+        } else {
+            // 检测失败，提示用户重试
+            Toast.makeText(this, "请完成人脸活体检测", Toast.LENGTH_SHORT).show();
+        }
+    }
+}
+Java
+步骤4: 图片转Base64编码
+工具类实现（g.o.c.h.c - Base64ImageUtil）：
+public static String imageToBase64(String imagePath) throws Throwable {
+    if (TextUtils.isEmpty(imagePath)) {
+        return null;
+    }
+
+    FileInputStream fis = new FileInputStream(imagePath);
+    byte[] bytes = new byte[fis.available()];
+    fis.read(bytes);
+
+    // 使用Android Base64编码，NO_WRAP表示不换行
+    String base64 = Base64.encodeToString(bytes, Base64.NO_WRAP);
+    fis.close();
+
+    return base64;
+}
+Java
+步骤5: Base64字符串格式
+编码选项: Base64.NO_WRAP（不换行）
+格式: /9j/4AAQSkZJRgABAQAAAQABAAD/2wBD...（JPEG图片的Base64）
+长度: 约 50KB - 200KB（取决于图片质量）
+识别: JPEG图片Base64始终以 /9j/ 开头
+2. 普通头像字段处理
+使用场景:
+- 跑步记录提交（sunRunExercises 接口的 headImage 字段）
+- 早操签到（不需要人脸识别时的 headImage 字段）
+字段值来源:
+// 从本地存储获取登录信息
+LoginInfo loginInfo = SPUtil.get("loginInfo", LoginInfo.class);
+
+// 获取头像URL
+String headImage = loginInfo.getHeadPortrait();
+// 可能的值: "https://app.xtotoro.com/avatar/100234.jpg" 或 ""
+Java
+默认值规则:
+场景
+headImage 值
+说明
+已登录，有头像
+"https://app.xtotoro.com/avatar/100234.jpg"
+用户头像URL
+已登录，无头像
+""
+空字符串
+不需要人脸识别
+登录信息中的 headPortrait 值
+可能是URL或空字符串
+需要人脸但未完成
+""
+空字符串（会导致提交失败）
+需要人脸且已完成
+/9j/4AAQSkZJRg...
+人脸图片Base64编码
+3. 不同接口的图片字段使用
+3.1 阳光跑提交流程
+第一步：提交基础记录 (sunRunExercises)
+{
+    "uuid": "550e8400-e29b-41d4-a716-446655440000",
+    "headImage": "https://app.xtotoro.com/avatar/100234.jpg",  // 使用登录头像URL
+    "stuNumber": "2021123456",
+    "km": "3.25",
+    // ... 其他字段
+}
+JSON
+第二步：提交详情（轨迹+人脸） (sunRunExercisesDetail，不加密)
+{
+    "scantronId": "789456123",
+    "stuNumber": "2021123456",
+    "faceData": "/9j/4AAQSkZJRgABAQAAAQABAAD...",  // 人脸识别Base64图片
+    "pointList": [
+        {"longitude": "116.397428", "latitude": "39.908823"},
+        {"longitude": "116.397512", "latitude": "39.908956"}
+    ],
+    "token": "eyJhbGciOiJIUzI1NiIs..."
+}
+JSON
+3.2 早操签到流程
+场景A: 不需要人脸识别 (扫码签到 signType="2")
+{
+    "stuNumber": "2021123456",
+    "phoneNumber": "13812345678",
+    "qrCode": "TOTORO_SIGN_3001_2001_20251215_A1B2C3",
+    "headImage": "",  // 空字符串
+    "baseStation": "460-00-12345-6789",
+    "longitude": "116.397428",
+    "latitude": "39.908823",
+    // ... 其他字段
+}
+JSON
+场景B: 需要人脸识别 (人脸签到)
+{
+    "stuNumber": "2021123456",
+    "phoneNumber": "13812345678",
+    "qrCode": "TOTORO_SIGN_3001_2001_20251215_A1B2C3",
+    "headImage": "/9j/4AAQSkZJRgABAQAAAQABAAD...",  // 人脸Base64
+    "baseStation": "460-00-12345-6789",
+    "longitude": "116.397428",
+    "latitude": "39.908823",
+    // ... 其他字段
+}
+JSON
+4. 重要注意事项
+4.1 图片格式相关
+图片格式: 百度人脸SDK返回的是JPEG格式图片
+Base64识别: JPEG图片Base64编码后始终以 /9j/ 开头
+编码选项: 必须使用 Base64.NO_WRAP 或等效选项，确保没有换行符
+字符集: Base64字符串仅包含 A-Z, a-z, 0-9, +, / 和 = 字符
+4.2 字段区分
+字段名
+用途
+可能的值类型
+headImage
+跑步记录、签到头像
+HTTP(S) URL 或 Base64
+faceData
+跑步详情人脸
+只能是 Base64
+headPortrait
+登录信息中的头像
+HTTP(S) URL
+配速计算公式
+配速（分钟/公里）= 总用时（秒）/ 60 / 里程（公里）
+# Python 示例
+def calculate_pace(used_time_seconds: int, km: float) -> str:
+    """计算配速
+
+    Args:
+        used_time_seconds: 用时（秒）
+        km: 里程（公里）
+
+    Returns:
+        配速字符串，格式如 "5'30''"
+    """
+    if km <= 0:
+        return "--"
+
+    pace_seconds = used_time_seconds / km  # 每公里秒数
+    minutes = int(pace_seconds // 60)
+    seconds = int(pace_seconds % 60)
+
+    return f"{minutes}'{seconds:02d}''"
+
+# 示例：1800秒跑3公里
+print(calculate_pace(1800, 3.0))  # 输出: 10'00''
+Python
+热量消耗计算公式
+消耗热量（千卡）≈ 里程（公里）× 67.34
+# Python 示例
+def calculate_calories(km: float) -> int:
+    """计算消耗热量
+
+    Args:
+        km: 里程（公里）
+
+    Returns:
+        消耗热量（千卡）
+    """
+    return int(km * 67.34)
+
+# 示例：跑3公里
+print(calculate_calories(3.0))  # 输出: 202
+Python
+API 端点详细说明
+1. 用户登录模块
+1.1 用户登录
+端点: POST /app/platform/login/login
+请求体 (LoginRequest):
+{
+    "loginWay": "string",      // 登录方式
+    "phoneNumber": "string",   // 手机号
+    "password": "string",      // 密码
+    "code": "string",          // 验证码
+    "longitude": "string",     // 经度
+    "latitude": "string",      // 纬度
+    "token": "string"          // 可选 token
+}
+JSON
+响应体 (LoginInfo):
+{
+    "code": "string",
+    "message": "string",
+    "studentId": "string",      // 学生ID
+    "stuNumber": "string",      // 学号
+    "stuName": "string",        // 学生姓名
+    "phoneNumber": "string",    // 手机号
+    "schoolId": "string",       // 学校ID
+    "schoolName": "string",     // 学校名称
+    "campusId": "string",       // 校区ID
+    "campusName": "string",     // 校区名称
+    "collegeId": "string",      // 学院ID
+    "collegeName": "string",    // 学院名称
+    "naturalId": "string",      // 专业ID
+    "naturalName": "string",    // 专业名称
+    "className": "string",      // 班级
+    "gender": "string",         // 性别
+    "headPortrait": "string",   // 头像URL
+    "token": "string"           // 登录令牌 (重要)
+}
+JSON
+说明:
+- loginWay 支持多种登录方式（手机号+密码、手机号+验证码、微信登录等）
+- 登录成功后返回的 token 用于后续所有API请求的认证
+1.2 微信登录
+微信登录是APP的主要登录方式，采用微信OAuth2.0授权流程。
+微信 AppID
+wx20976a32c7a2fd75
+Plain text
+微信登录完整流程
+┌─────────────┐     ┌─────────────┐     ┌─────────────┐     ┌─────────────┐
+│   APP客户端  │     │   微信APP   │     │ 微信开放平台 │     │ Totoro服务器 │
+└──────┬──────┘     └──────┬──────┘     └──────┬──────┘     └──────┬──────┘
+       │                    │                    │                    │
+       │ 1. 调用WXAPIFactory│                    │                    │
+       │────────────────────>                    │                    │
+       │                    │                    │                    │
+       │ 2. SendAuth.Req    │                    │                    │
+       │   scope=snsapi_userinfo                 │                    │
+       │────────────────────>                    │                    │
+       │                    │                    │                    │
+       │                    │ 3. 用户授权        │                    │
+       │                    │<──────────────────>│                    │
+       │                    │                    │                    │
+       │ 4. SendAuth.Resp   │                    │                    │
+       │   (code)           │                    │                    │
+       │<────────────────────                    │                    │
+       │                    │                    │                    │
+       │ 5. 获取服务器配置                       │                    │
+       │   POST /app/platform/serverlist/getLesseeServer              │
+       │   Body: {code: "微信授权码"}            │                    │
+       │─────────────────────────────────────────────────────────────>│
+       │                    │                    │                    │
+       │ 6. 返回 token + path                    │                    │
+       │<─────────────────────────────────────────────────────────────│
+       │                    │                    │                    │
+       │ 7. 使用token登录                        │                    │
+       │   POST /app/platform/login/login        │                    │
+       │   Body: LoginRequest (含token)          │                    │
+       │─────────────────────────────────────────────────────────────>│
+       │                    │                    │                    │
+       │ 8. 返回 LoginInfo                       │                    │
+       │<─────────────────────────────────────────────────────────────│
+       │                    │                    │                    │
+Plain text
+Step 1: 发起微信授权请求
+APP调用微信SDK发起授权：
+// 注册微信API
+IWXAPI wxapi = WXAPIFactory.createWXAPI(context, "wx20976a32c7a2fd75", false);
+wxapi.registerApp("wx20976a32c7a2fd75");
+
+// 发起授权请求
+SendAuth.Req req = new SendAuth.Req();
+req.scope = "snsapi_userinfo";  // 获取用户信息权限
+req.state = "wechat_sdk_demo_test";
+wxapi.sendReq(req);
+Java
+Step 2: 微信回调处理
+WXEntryActivity 接收微信回调：
+// 微信授权回调
+@Override
+public void onResp(BaseResp baseResp) {
+    if (baseResp.getType() == 1) {  // 授权类型
+        // 保存微信授权码
+        String code = ((SendAuth.Resp) baseResp).code;
+        // code 保存到本地存储
+    }
+}
+Java
+Step 3: 使用授权码获取服务器Token
+端点: POST /app/platform/serverlist/getLesseeServer
+请求体 (ServerRequest):
+{
+    "code": "微信授权码"  // 来自微信SDK回调
+}
+JSON
+响应体 (ServerReturn):
+{
+    "code": "string",      // 响应码
+    "message": "string",   // 响应消息
+    "path": "string",      // 动态API路径（可选）
+    "token": "string",     // 服务器生成的token
+    "newsUrl": "string",   // 新闻URL
+    "useUrl": "string"     // 使用URL
+}
+JSON
+说明: 服务器使用微信授权码向微信服务器换取 access_token 和用户信息，然后生成自己的 token 返回给APP
+Step 4: 执行最终登录
+使用服务器返回的 token 调用登录接口：
+端点: POST /app/platform/login/login
+请求体 (LoginRequest) - 微信登录方式:
+{
+    "loginWay": "1",           // 登录方式：1=微信登录
+    "phoneNumber": "",         // 空
+    "password": "",            // 空
+    "code": "微信授权码",       // 微信授权码
+    "longitude": "经度",       // 当前位置经度
+    "latitude": "纬度",        // 当前位置纬度
+    "token": "服务器token"     // 来自 getLesseeServer 的 token
+}
+JSON
+响应体 (LoginInfo): 同普通登录
+微信扫码登录（Web端/TV端）
+对于无法直接唤起微信APP的场景，使用微信扫码登录：
+方法一：获取登录二维码（SDK 方式）
+微信开放平台URL:
+https://open.weixin.qq.com/connect/sdk/qrconnect?appid={appid}&noncestr={noncestr}&timestamp={timestamp}&scope={scope}&signature={signature}
+Plain text
+参数说明:
+ 参数 
+ 说明 
+ appid 
+ 微信AppID: wx20976a32c7a2fd75 
+ noncestr 
+ 随机字符串 
+ timestamp 
+ 时间戳 
+ scope 
+ 权限范围: snsapi_userinfo 
+ signature 
+ 签名 
+响应:
+{
+    "errcode": 0,
+    "qrcode": {
+        "qrcodebase64": "Base64编码的二维码图片"
+    },
+    "uuid": "二维码唯一标识",
+    "appname": "应用名称"
+}
+JSON
+方法二：简化二维码获取（REST API 推荐）
+这是一种更简单的获取二维码的方式，无需签名计算：
+步骤 1: 获取二维码图片和 UUID
+端点:
+GET https://open.weixin.qq.com/connect/app/qrconnect
+    ?appid=wx20976a32c7a2fd75
+    &bundleid=(com.totoro.school)
+    &scope=snsapi_userinfo
+    &state=
+    &from=message
+    &isappinstalled=0
+Plain text
+请求头:
+User-Agent: Mozilla/5.0 (iPhone; CPU iPhone OS 8_0 like Mac OS X) AppleWebKit/600.1.4 (KHTML, like Gecko) Mobile/12A365 MicroMessenger/5.4.1 NetType/WIFI WebView/doc
+Plain text
+响应: HTML 页面，包含二维码和 UUID
+轮询扫码状态
+用户扫码后，需要轮询检查授权状态并获取授权码。
+轮询端点:
+GET https://long.open.weixin.qq.com/connect/l/qrconnect
+    ?uuid={uuid}
+    &f=url
+Plain text
+或使用 JSON 格式:
+GET https://long.open.weixin.qq.com/connect/l/qrconnect
+    ?uuid={uuid}
+    &f=json
+Plain text
+参数
+说明
+uuid
+上一步获取的二维码唯一标识
+f
+返回格式:url或json
+轮询建议:
+- 间隔时间: 1-2秒
+- 超时时间: 300秒（5分钟）
+- 二维码过期后需重新获取
+轮询结果状态:
+- 等待扫码: 返回空或特定状态码
+- 已扫码待确认: 返回中间状态
+- 授权成功: 返回包含 code 参数的 URL
+- 授权失败/超时: 返回错误信息
+成功响应示例 (f=url):
+https://xxxxxx/oauth?code=021A5H1w3XGJwh2gTX2w3F0gNd4A5H1i&state=
+Plain text
+从中提取 code 参数值即为微信授权码。
+微信登录相关文件
+文件
+说明
+WXEntryActivity.java
+微信回调Activity
+LoginActivity.java
+登录主页面
+ServerRequest.java
+服务器配置请求
+ServerReturn.java
+服务器配置响应
+IDiffDevOAuth.java
+扫码登录接口
+OAuthListener.java
+扫码登录回调
+2. 主页数据模块
+2.1 获取首页数据
+端点: POST /app/platform/login/getAppFrontPage
+请求体 (MainRequest):
+{
+    "stuNumber": "string",
+    "token": "string"
+}
+JSON
+响应体 (MainReturn) 包含:
+- 阳光跑信息 sunRunInfoVo (RunInfo)
+- 总里程、用时、配速等统计数据
+2.2 获取个人中心数据
+端点: POST /app/platform/login/getAppMyPage
+请求体 (MineRequest)
+响应体 (MineReturn)
+3. 阳光跑模块
+3.1 获取跑步任务
+端点: POST /app/sunrun/getSunrunPaper
+请求体 (RunTaskRequest):
+{
+    "stuNumber": "string",   // 学号
+    "schoolId": "string",    // 学校ID
+    "campusId": "string",    // 校区ID
+    "token": "string"        // 登录令牌
+}
+JSON
+响应体 (RunTaskReturn):
+{
+    "code": "string",
+    "message": "string",
+    "startDate": "string",      // 开始日期
+    "startTime": "string",      // 开始时间
+    "endDate": "string",        // 结束日期
+    "endTime": "string",        // 结束时间
+    "mileage": "string",        // 要求里程
+    "minTime": "string",        // 最短时间
+    "maxTime": "string",        // 最长时间
+    "minSpeed": "string",       // 最低配速
+    "maxSpeed": "string",       // 最高配速
+    "fitDegree": "string",      // 匹配度要求
+    "faceFlag": "string",       // 人脸识别标志
+    "offsetRange": "string",    // 偏移范围
+    "ifHasRun": "string",       // 是否已跑步
+    "runPointList": [           // 打卡点列表
+        {
+            "taskId": "string",
+            "pointId": "string",
+            "pointName": "string",
+            "longitude": "string",
+            "latitude": "string",
+            "pointList": [        // 点位坐标列表
+                {
+                    "longitude": "string",
+                    "latitude": "string"
+                }
+            ]
+        }
+    ]
+}
+JSON
+3.2 开始跑步
+端点: POST /app/sunrun/getRunBegin
+请求体 (StartRunRequest):
+{
+    "campusId": "string",    // 校区ID
+    "schoolId": "string",    // 学校ID
+    "stuNumber": "string",   // 学号
+    "token": "string"        // 登录令牌
+}
+JSON
+响应体 (StartRunReturn):
+{
+    "code": "string",
+    "message": "string"
+}
+JSON
+说明: 开始跑步前需调用此接口
+3.3 提交跑步记录
+端点: POST /app/platform/recrecord/sunRunExercises
+请求体 (SubmitRunRequest):
+{
+    "uuid": "string",              // 唯一标识
+    "submitDate": "string",        // 提交日期
+    "consume": "string",           // 消耗
+    "stuNumber": "string",         // 学号
+    "schoolId": "string",          // 学校ID
+    "phoneNumber": "string",       // 手机号
+    "headImage": "string",         // 头像
+    "baseStation": "string",       // 基站信息
+    "mac": "string",               // MAC地址（可选）
+    "taskId": "string",            // 任务ID
+    "routeId": "string",           // 路线ID
+    "flag": "string",              // 标志
+    "fitDegree": "string",         // 匹配度
+    "startTime": "string",         // 开始时间
+    "endTime": "string",           // 结束时间
+    "usedTime": "string",          // 用时（秒）
+    "km": "string",                // 里程（公里）
+    "avgSpeed": "string",          // 平均配速
+    "steps": "string",             // 步数
+    "warnFlag": "string",          // 警告标志
+    "warnType": "string",          // 警告类型
+    "phoneInfo": "string",         // 手机信息
+    "version": "string",           // APP版本
+    "sensorString": "string",      // 传感器数据
+    "runType": "string",           // 跑步类型
+    "pointList": [                 // 轨迹点列表
+        {
+            "longitude": "string",
+            "latitude": "string"
+        }
+    ],
+    "token": "string",             // 登录令牌
+    "evaluateDate": "string",      // 评估日期
+    "ifLocalSubmit": "string",     // 是否本地提交
+    "LocalSubmitReason": "string"  // 本地提交原因
+}
+JSON
+响应体 (SubmitRunReturn):
+{
+    "code": "string",
+    "message": "string",
+    "scantronId": "string"   // 记录ID，用于后续提交详情
+}
+JSON
+3.4 提交跑步详情（轨迹+人脸）
+端点: POST /app/platform/recrecord/sunRunExercisesDetail
+⚠️ 注意: 此端点请求不加密
+请求体 (SubmitRunDetailRequest):
+{
+    "scantronId": "string",     // 来自 sunRunExercises 返回的 ID
+    "stuNumber": "string",      // 学号
+    "faceData": "string",       // 人脸数据（Base64）
+    "pointList": [              // 完整轨迹点
+        {
+            "longitude": "string",
+            "latitude": "string"
+        }
+    ],
+    "token": "string"           // 登录令牌
+}
+JSON
+响应体 (SubmitRunDetailReturn):
+{
+    "code": "string",
+    "message": "string"
+}
+JSON
+3.5 获取自由跑任务
+端点: POST /app/sunrun/getFreerunPaper
+请求体 (FreeTaskRequest)
+响应体 (FreeTaskReturn)
+3.6 获取跑步成绩
+端点: POST /app/sunrun/getSunrunArch
+请求体 (RunScoreRequest)
+响应体 (RunScoreReturn)
+3.7 获取跑步记录列表
+端点: POST /app/sunrun/getSunrunSport
+请求体 (RunRecordRequest):
+{
+    "stuNumber": "string",   // 学号
+    "runType": "string",     // 跑步类型
+    "monthId": "string",     // 月份ID
+    "pageNumber": "string",  // 页码
+    "rowNumber": "string",   // 每页条数
+    "token": "string"        // 登录令牌
+}
+JSON
+响应体 (RunRecordReturn)
+3.8 查询本地/历史记录
+端点: POST /app/sunrun/getSunrunArchLoacl
+请求体 (QueryRecordRequest):
+{
+    "evaluateDate": "string",  // 评估日期
+    "runType": "string",       // 跑步类型
+    "startTime": "string",     // 开始时间
+    "stuNumber": "string",     // 学号
+    "token": "string"          // 登录令牌
+}
+JSON
+响应体 (QueryRecordReturn)
+说明: 用于查询已存在的记录，避免重复提交
+3.9 获取跑步详情
+端点: POST /app/sunrun/getSunrunArchDetail
+请求体 (RunDetailRequest)
+响应体 (RunDetailReturn)
+4. 早操签到模块
+4.1 获取签到任务
+端点: POST /app/mornsign/getMornSignPaper
+请求体 (MorningTaskRequest):
+{
+    "stuNumber": "string",     // 学号
+    "phoneNumber": "string",   // 手机号
+    "schoolId": "string",      // 学校ID
+    "campusId": "string",      // 校区ID
+    "token": "string"          // 登录令牌
+}
+JSON
+响应体 (MorningTaskReturn):
+{
+    "code": "string",
+    "message": "string",
+    "startDate": "string",         // 开始日期
+    "startTime": "string",         // 开始时间
+    "endDate": "string",           // 结束日期
+    "endTime": "string",           // 结束时间
+    "dayNeedSignCount": "string",  // 当日需签到次数
+    "dayCompSignCount": "string",  // 当日已签到次数
+    "minTimeInterval": "string",   // 最小间隔时间
+    "offsetRange": "string",       // 偏移范围（米）
+    "qrCode": "string",            // 二维码
+    "signType": "string",          // 签到类型
+    "signPointList": [             // 签到点列表
+        {
+            "taskId": "string",
+            "pointId": "string",
+            "pointName": "string",
+            "longitude": "string",
+            "latitude": "string",
+            "qrCode": "string"
+        }
+    ]
+}
+JSON
+4.2 提交签到
+端点: POST /app/platform/recrecord/morningExercises
+请求体 (SubmitMorningRequest):
+{
+    "stuNumber": "string",     // 学号
+    "phoneNumber": "string",   // 手机号
+    "qrCode": "string",        // 二维码数据
+    "headImage": "string",     // 头像/人脸图片
+    "baseStation": "string",   // 基站信息
+    "longitude": "string",     // 经度
+    "latitude": "string",      // 纬度
+    "phoneInfo": "string",     // 手机信息
+    "mac": "string",           // MAC地址
+    "taskId": "string",        // 任务ID
+    "pointId": "string",       // 签到点ID
+    "appVersion": "string",    // APP版本
+    "signType": "string",      // 签到类型
+    "token": "string"          // 登录令牌
+}
+JSON
+响应体 (SubmitMorningReturn):
+{
+    "code": "string",
+    "message": "string"
+}
+JSON
+4.3 获取签到成绩
+端点: POST /app/mornsign/getMornSignArchDetail
+请求体 (MorningScoreRequest)
+响应体 (MorningScoreReturn)
+5. 其他辅助接口
+5.1 获取服务器配置
+端点: POST /app/platform/serverlist/getLesseeServer
+请求体 (ServerRequest)
+响应体 (ServerReturn)
+说明: 可能返回动态的 API 基础路径
+5.2 获取手机服务器配置
+端点: POST /app/platform/serverlist/getPhoneLesseeServer
+请求体 (PhoneServerRequest)
+响应体 (ServerReturn)
+5.3 获取APP版本信息
+端点: POST /app/platform/serverlist/updateAppVersion
+请求体 (VersionRequest)
+响应体 (VersionInfo)
+5.4 获取公告
+端点: POST /app/platform/serverlist/getAppNotice
+请求体 (NoticeRequest)
+响应体 (NoticeReturn)
+5.5 获取标语
+端点: POST /app/platform/serverlist/getAppSlogan
+请求体 (SloganRequest)
+响应体 (SloganReturn)
+5.6 获取广告
+端点: POST /app/platform/serverlist/getAppAd
+请求体 (AdRequest)
+响应体 (AdReturn)
+5.7 获取注册URL
+端点: POST /app/platform/serverlist/getRegisterUrl
+响应体 (RegisterReturn)
+5.8 获取学期信息
+端点: POST /app/platform/course/getSchoolTerm
+请求体 (TermRequest)
+响应体 (TermReturn)
+5.9 获取月份信息
+端点: POST /app/platform/course/getSchoolMonthByTerm
+请求体 (MonthRequest)
+响应体 (MonthReturn)
+5.10 获取体测成绩
+端点: POST /app/platform/course/getSportEvaArch
+请求体 (TestScoreRequest)
+响应体 (TestScoreReturn)
+5.11 获取申诉列表
+端点: POST /app/platform/course/getAppealList
+请求体 (AppealListRequest)
+响应体 (AppealListReturn)
+5.12 获取申诉详情
+端点: POST /app/platform/course/getAppealById
+请求体 (AppealInfoRequest)
+响应体 (AppealInfo)
+完整请求/响应示例
+示例 1: 登录请求（微信登录方式）
+请求:
+POST /app/platform/login/login HTTP/1.1
+Host: app.xtotoro.com
+Content-Type: text/plain; charset=utf-8
+User-Agent: okhttp/4.9.0
+
+[RSA加密后的Base64字符串]
+Plain text
+加密前的JSON:
+{
+    "loginWay": "1",
+    "phoneNumber": "",
+    "password": "",
+    "code": "021A5H1w3XGJwh2gTX2w3F0gNd4A5H1i",
+    "longitude": "116.397428",
+    "latitude": "39.908823",
+    "token": "server_generated_token_xxx"
+}
+JSON
+响应:
+{
+    "code": "0",
+    "message": "登录成功",
+    "studentId": "100234",
+    "stuNumber": "2021123456",
+    "stuName": "张三",
+    "phoneNumber": "13812345678",
+    "schoolId": "1001",
+    "schoolName": "XX大学",
+    "campusId": "2001",
+    "campusName": "本部校区",
+    "collegeId": "301",
+    "collegeName": "计算机学院",
+    "naturalId": "40101",
+    "naturalName": "计算机科学与技术",
+    "className": "计科2101班",
+    "gender": "1",
+    "headPortrait": "https://app.xtotoro.com/avatar/100234.jpg",
+    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdHVOdW1iZXIiOiIyMDIxMTIzNDU2IiwiaWF0IjoxNzAyNjAwMDAwfQ.xxx"
+}
+JSON
+示例 2: 获取跑步任务
+请求 (加密前):
+{
+    "stuNumber": "2021123456",
+    "schoolId": "1001",
+    "campusId": "2001",
+    "token": "eyJhbGciOiJIUzI1NiIs..."
+}
+JSON
+响应:
+{
+    "code": "0",
+    "message": "获取成功",
+    "startDate": "2025-12-01",
+    "startTime": "06:00:00",
+    "endDate": "2025-12-31",
+    "endTime": "22:00:00",
+    "mileage": "3.00",
+    "minTime": "15",
+    "maxTime": "45",
+    "minSpeed": "4.00",
+    "maxSpeed": "10.00",
+    "fitDegree": "80",
+    "faceFlag": "1",
+    "offsetRange": "50",
+    "ifHasRun": "0",
+    "runPointList": [
+        {
+            "taskId": "10001",
+            "pointId": "2001",
+            "pointName": "图书馆西门",
+            "longitude": "116.397428",
+            "latitude": "39.908823",
+            "pointList": [
+                {"longitude": "116.397428", "latitude": "39.908823"},
+                {"longitude": "116.397450", "latitude": "39.908850"},
+                {"longitude": "116.397480", "latitude": "39.908880"}
+            ]
+        },
+        {
+            "taskId": "10001",
+            "pointId": "2002",
+            "pointName": "体育馆南门",
+            "longitude": "116.398234",
+            "latitude": "39.909456",
+            "pointList": [
+                {"longitude": "116.398234", "latitude": "39.909456"},
+                {"longitude": "116.398260", "latitude": "39.909480"}
+            ]
+        },
+        {
+            "taskId": "10001",
+            "pointId": "2003",
+            "pointName": "教学楼A",
+            "longitude": "116.399012",
+            "latitude": "39.910123",
+            "pointList": [
+                {"longitude": "116.399012", "latitude": "39.910123"}
+            ]
+        }
+    ]
+}
+JSON
+示例 3: 提交跑步记录
+请求 (加密前):
+{
+    "uuid": "550e8400-e29b-41d4-a716-446655440000",
+    "submitDate": "2025-12-15",
+    "consume": "220",
+    "stuNumber": "2021123456",
+    "schoolId": "1001",
+    "phoneNumber": "13812345678",
+    "headImage": "https://app.xtotoro.com/avatar/100234.jpg",
+    "baseStation": "460-00-12345-6789",
+    "mac": "02:00:00:00:00:00",
+    "taskId": "10001",
+    "routeId": "5001",
+    "flag": "1",
+    "fitDegree": "92",
+    "startTime": "07:30:25",
+    "endTime": "08:02:18",
+    "usedTime": "1913",
+    "km": "3.27",
+    "avgSpeed": "9.75",
+    "steps": "4580",
+    "warnFlag": "0",
+    "warnType": "0",
+    "phoneInfo": "HUAWEI-P40|Android 12|EMUI 12.0",
+    "version": "1.2.14",
+    "sensorString": "acc:0.12,0.34,9.81|gyro:0.01,0.02,0.03|step:4580",
+    "runType": "1",
+    "pointList": [
+        {"longitude": "116.397428", "latitude": "39.908823"},
+        {"longitude": "116.397456", "latitude": "39.908867"},
+        {"longitude": "116.397489", "latitude": "39.908912"},
+        {"longitude": "116.397523", "latitude": "39.908958"},
+        {"longitude": "116.397561", "latitude": "39.909005"}
+    ],
+    "token": "eyJhbGciOiJIUzI1NiIs...",
+    "evaluateDate": "2025-12-15",
+    "ifLocalSubmit": "0",
+    "LocalSubmitReason": ""
+}
+JSON
+响应:
+{
+    "code": "0",
+    "message": "提交成功",
+    "scantronId": "789456123"
+}
+JSON
+示例 4: 提交跑步详情（不加密）
+请求 (明文JSON):
+{
+    "scantronId": "789456123",
+    "stuNumber": "2021123456",
+    "faceData": "/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAMCAgMCAgMDAwMEAwMEBQgFBQQEBQoHBwYIDAoMCwsKCwsNDhIQDQ4RDgsLEBYQERMUFRUVDA8XGBYUGBIUFRT/2wBDAQMEBAUEBQkFBQkUDQsNFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBT/wAARCABkAGQDASIAAhEBAxEB/8QAHwAAAQUBAQEBAQEAAAAAAAAAAAECAwQFBgcICQoL/...",
+    "pointList": [
+        {"longitude": "116.397428", "latitude": "39.908823"},
+        {"longitude": "116.397456", "latitude": "39.908867"},
+        {"longitude": "116.397489", "latitude": "39.908912"}
+    ],
+    "token": "eyJhbGciOiJIUzI1NiIs..."
+}
+JSON
+响应:
+{
+    "code": "0",
+    "message": "提交成功"
+}
+JSON
+示例 5: 早操签到
+请求 (加密前):
+{
+    "stuNumber": "2021123456",
+    "phoneNumber": "13812345678",
+    "qrCode": "TOTORO_SIGN_3001_2001_20251215_A1B2C3",
+    "headImage": "/9j/4AAQSkZJRgABAQAAAQABAAD...",
+    "baseStation": "460-00-12345-6789",
+    "longitude": "116.397428",
+    "latitude": "39.908823",
+    "phoneInfo": "HUAWEI-P40|Android 12|EMUI 12.0",
+    "mac": "02:00:00:00:00:00",
+    "taskId": "3001",
+    "pointId": "2001",
+    "appVersion": "1.2.14",
+    "signType": "1",
+    "token": "eyJhbGciOiJIUzI1NiIs..."
+}
+JSON
+响应:
+{
+    "code": "0",
+    "message": "签到成功"
+}
+JSON
+示例 6: 获取签到任务
+请求 (加密前):
+{
+    "stuNumber": "2021123456",
+    "phoneNumber": "13812345678",
+    "schoolId": "1001",
+    "campusId": "2001",
+    "token": "eyJhbGciOiJIUzI1NiIs..."
+}
+JSON
+响应:
+{
+    "code": "0",
+    "message": "获取成功",
+    "startDate": "2025-12-01",
+    "startTime": "06:00:00",
+    "endDate": "2025-12-31",
+    "endTime": "08:30:00",
+    "dayNeedSignCount": "1",
+    "dayCompSignCount": "0",
+    "minTimeInterval": "30",
+    "offsetRange": "100",
+    "qrCode": "",
+    "signType": "1",
+    "signPointList": [
+        {
+            "taskId": "3001",
+            "pointId": "2001",
+            "pointName": "操场集合点",
+            "longitude": "116.397428",
+            "latitude": "39.908823",
+            "qrCode": "TOTORO_SIGN_3001_2001_20251215_A1B2C3"
+        },
+        {
+            "taskId": "3001",
+            "pointId": "2002",
+            "pointName": "体育馆门口",
+            "longitude": "116.398234",
+            "latitude": "39.909456",
+            "qrCode": "TOTORO_SIGN_3001_2002_20251215_D4E5F6"
+        }
+    ]
+}
+JSON
+认证机制
+所有需要认证的接口都需要在请求体中包含 token 字段，该 token 通过登录接口获取。
+关键业务流程
+阳光跑完整流程
+1. 登录获取 token
+   POST /app/platform/login/login
+
+2. 获取跑步任务（打卡点、要求等）
+   POST /app/sunrun/getSunrunPaper
+
+3. 开始跑步（记录开始状态）
+   POST /app/sunrun/getRunBegin
+
+4. 用户跑步（APP记录轨迹）
+
+5. 提交跑步基础记录
+   POST /app/platform/recrecord/sunRunExercises
+   返回 scantronId
+
+6. 提交跑步详情（轨迹+人脸）
+   POST /app/platform/recrecord/sunRunExercisesDetail
+   使用上一步的 scantronId
+Plain text
+微信登录完整流程
+1. 初始化微信SDK并发起授权
+   IWXAPI.sendReq(SendAuth.Req)
+   scope: snsapi_userinfo
+
+2. 微信APP回调返回授权码
+   WXEntryActivity.onResp() -> code
+
+3. 使用授权码获取服务器token
+   POST /app/platform/serverlist/getLesseeServer
+   Body: {"code": "微信授权码"}
+   返回: token, path
+
+4. 使用token执行登录
+   POST /app/platform/login/login
+   Body: {
+     "loginWay": "1",
+     "code": "微信授权码",
+     "token": "服务器token",
+     "longitude": "经度",
+     "latitude": "纬度"
+   }
+
+5. 获取完整用户信息 LoginInfo
+Plain text
+早操签到流程
+1. 登录获取 token
+   POST /app/platform/login/login
+
+2. 获取签到任务（签到点、时间等）
+   POST /app/mornsign/getMornSignPaper
+
+3. 用户到达签到点
+
+4. 提交签到
+   POST /app/platform/recrecord/morningExercises
+Plain text
+本地记录提交流程
+1. 查询是否已有记录
+   POST /app/sunrun/getSunrunArchLoacl
+
+2. 如无记录，提交本地缓存的跑步数据
+   POST /app/platform/recrecord/sunRunExercises
+   （设置 ifLocalSubmit 和 LocalSubmitReason）
+Plain text
+安全注意事项
+RSA 公钥暴露: 公钥存储在 APK 的 assets 目录，可被提取
+无请求签名: 没有发现额外的请求签名机制
+Token 验证: 主要依赖 token 进行身份验证
+位置伪造风险: 经纬度由客户端提供，存在伪造可能
+传感器数据: sensorString 字段可能包含防作弊数据
+文件路径参考
+类型
+路径
+API接口定义
+sources/g/o/a/n/a.java
+网络拦截器
+sources/com/totoro/lib_net/interceptor/CommonInterceptor.java
+Retrofit客户端
+sources/com/totoro/lib_net/net/RetrofitClient.java
+登录请求模型
+sources/com/totoro/ft_home/model/login/LoginRequest.java
+登录响应模型
+sources/com/totoro/ft_home/model/login/LoginInfo.java
+跑步任务请求
+sources/com/totoro/ft_home/model/run/task/RunTaskRequest.java
+跑步任务响应
+sources/com/totoro/ft_home/model/run/task/RunTaskReturn.java
+开始跑步请求
+sources/com/totoro/ft_home/model/run/start/StartRunRequest.java
+提交跑步请求
+sources/com/totoro/ft_home/model/run/submit/SubmitRunRequest.java
+提交详情请求
+sources/com/totoro/ft_home/model/run/submit/SubmitRunDetailRequest.java
+早操任务请求
+sources/com/totoro/ft_home/model/sign/task/MorningTaskRequest.java
+早操任务响应
+sources/com/totoro/ft_home/model/sign/task/MorningTaskReturn.java
+提交签到请求
+sources/com/totoro/ft_home/model/sign/submit/SubmitMorningRequest.java
+查询记录请求
+sources/com/totoro/ft_home/model/run/local/QueryRecordRequest.java
+RSA加密工具
+sources/g/o/c/h/q.java
+公钥加载工具
+sources/g/o/c/h/l.java
+微信回调Activity
+sources/com/totoro/school/wxapi/WXEntryActivity.java
+服务器配置请求
+sources/com/totoro/ft_home/model/server/ServerRequest.java
+服务器配置响应
+sources/com/totoro/ft_home/model/server/ServerReturn.java
+微信扫码登录实现
+sources/com/tencent/mm/opensdk/diffdev/a/a.java
+二维码获取任务
+sources/com/tencent/mm/opensdk/diffdev/a/b.java
+扫码状态轮询
+sources/com/tencent/mm/opensdk/diffdev/a/c.java
+附录：微信开放平台API
+获取 access_token
+微信授权码换取access_token（服务器端执行）:
+GET https://api.weixin.qq.com/sns/oauth2/access_token
+    ?appid=wx20976a32c7a2fd75
+    &secret={AppSecret}
+    &code={授权码}
+    &grant_type=authorization_code
+Plain text
+响应:
+{
+    "access_token": "ACCESS_TOKEN",
+    "expires_in": 7200,
+    "refresh_token": "REFRESH_TOKEN",
+    "openid": "OPENID",
+    "scope": "snsapi_userinfo"
+}
+JSON
+获取用户信息
+GET https://api.weixin.qq.com/sns/userinfo
+    ?access_token={access_token}
+    &openid={openid}
+Plain text
+响应:
+{
+    "openid": "OPENID",
+    "nickname": "昵称",
+    "sex": 1,
+    "province": "省份",
+    "city": "城市",
+    "country": "国家",
+    "headimgurl": "头像URL",
+    "unionid": "UNIONID"
+}
