@@ -1,0 +1,10 @@
+{
+  "name": "totoro-sign-serverless",
+  "version": "1.0.0",
+  "description": "Serverless version of Totoro sign-in tool",
+  "main": "api/index.js",
+  "dependencies": {
+    "axios": "^1.6.2",
+    "cheerio": "^1.0.0-rc.12"
+  }
+}
